@@ -42,11 +42,6 @@ solar-data-service/
 - Local development environment with Docker Compose
 - AWS CDK for infrastructure as code
 
-## Deployed URL
-
-The Lambda function is accessible at:
-```
-https://[lambda-function-url]
 ```
 
 ## API Endpoints
@@ -214,16 +209,3 @@ The system implements the following strategies to handle exceptions and ensure d
    - Validation of data ranges and consistency
    - Detection of outliers that might indicate sensor issues
    - Timestamps validation to ensure data coherence
-
-## Future Improvements
-
-1. **Caching Layer**: Implement Redis cache for frequently accessed data
-2. **Data Aggregation**: Add support for different time intervals (daily, weekly, monthly)
-3. **API Gateway**: Replace Function URL with API Gateway for better routing and security
-4. **Authentication**: Add proper authentication for API endpoints
-5. **Performance Optimizations**: Implement batch processing for large datasets
-6. **Geographic Expansion**: Support multiple locations/coordinates
-
-## License
-
-MIT

@@ -1,0 +1,73 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.config = void 0;
+exports.initializeConfig = initializeConfig;
+const aws_sdk_1 = require("aws-sdk");
+let dbCredentials = {
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres'
+};
+// Function to get database credentials from Secrets Manager
+async function getDbCredentialsFromSecretManager() {
+    const secretsManager = new aws_sdk_1.SecretsManager();
+    const secretArn = process.env.DB_CREDENTIALS_SECRET_ARN;
+    if (!secretArn) {
+        console.log('No secret ARN provided, using environment variables');
+        return {
+            username: process.env.DB_USER || 'postgres',
+            password: process.env.DB_PASSWORD || 'postgres'
+        };
+    }
+    try {
+        console.log(`Retrieving secret from Secrets Manager: ${secretArn}`);
+        const secretResponse = await secretsManager.getSecretValue({ SecretId: secretArn }).promise();
+        if (!secretResponse.SecretString) {
+            throw new Error('Secret string is empty');
+        }
+        const secret = JSON.parse(secretResponse.SecretString);
+        console.log('Successfully retrieved database credentials from Secrets Manager');
+        return {
+            username: secret.username,
+            password: secret.password
+        };
+    }
+    catch (error) {
+        console.error('Error retrieving secret from Secrets Manager:', error);
+        // Fallback to environment variables
+        return {
+            username: process.env.DB_USER || 'postgres',
+            password: process.env.DB_PASSWORD || 'postgres'
+        };
+    }
+}
+// Initialize config with default values
+exports.config = {
+    // Database configuration
+    dbHost: process.env.DB_HOST || 'localhost',
+    dbPort: parseInt(process.env.DB_PORT || '5432', 10),
+    dbName: process.env.DB_NAME || 'soltrak',
+    dbUser: dbCredentials.username,
+    dbPassword: dbCredentials.password,
+    dbSslEnabled: process.env.DB_SSL_ENABLED === 'true',
+    // Credentials management
+    dbCredentialsSecretArn: process.env.DB_CREDENTIALS_SECRET_ARN,
+    // Logging
+    logLevel: process.env.LOG_LEVEL || 'info'
+};
+// Function to initialize credentials - call this before using the database
+async function initializeConfig() {
+    try {
+        // Only fetch from Secrets Manager if running in AWS (not local)
+        if (process.env.DB_CREDENTIALS_SECRET_ARN) {
+            dbCredentials = await getDbCredentialsFromSecretManager();
+            // Update config with retrieved credentials
+            exports.config.dbUser = dbCredentials.username;
+            exports.config.dbPassword = dbCredentials.password;
+            console.log('Database configuration updated with credentials from Secrets Manager');
+        }
+    }
+    catch (error) {
+        console.error('Failed to initialize config with secrets:', error);
+    }
+}
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiY29uZmlnLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vc3JjL2NvbmZpZy50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7QUFxRUEsNENBYUM7QUFsRkQscUNBQXlDO0FBUXpDLElBQUksYUFBYSxHQUFHO0lBQ2xCLFFBQVEsRUFBRSxPQUFPLENBQUMsR0FBRyxDQUFDLE9BQU8sSUFBSSxVQUFVO0lBQzNDLFFBQVEsRUFBRSxPQUFPLENBQUMsR0FBRyxDQUFDLFdBQVcsSUFBSSxVQUFVO0NBQ2hELENBQUM7QUFFRiw0REFBNEQ7QUFDNUQsS0FBSyxVQUFVLGlDQUFpQztJQUM5QyxNQUFNLGNBQWMsR0FBRyxJQUFJLHdCQUFjLEVBQUUsQ0FBQztJQUM1QyxNQUFNLFNBQVMsR0FBRyxPQUFPLENBQUMsR0FBRyxDQUFDLHlCQUF5QixDQUFDO0lBRXhELElBQUksQ0FBQyxTQUFTLEVBQUUsQ0FBQztRQUNmLE9BQU8sQ0FBQyxHQUFHLENBQUMscURBQXFELENBQUMsQ0FBQztRQUNuRSxPQUFPO1lBQ0wsUUFBUSxFQUFFLE9BQU8sQ0FBQyxHQUFHLENBQUMsT0FBTyxJQUFJLFVBQVU7WUFDM0MsUUFBUSxFQUFFLE9BQU8sQ0FBQyxHQUFHLENBQUMsV0FBVyxJQUFJLFVBQVU7U0FDaEQsQ0FBQztJQUNKLENBQUM7SUFFRCxJQUFJLENBQUM7UUFDSCxPQUFPLENBQUMsR0FBRyxDQUFDLDJDQUEyQyxTQUFTLEVBQUUsQ0FBQyxDQUFDO1FBQ3BFLE1BQU0sY0FBYyxHQUFHLE1BQU0sY0FBYyxDQUFDLGNBQWMsQ0FBQyxFQUFFLFFBQVEsRUFBRSxTQUFTLEVBQUUsQ0FBQyxDQUFDLE9BQU8sRUFBRSxDQUFDO1FBRTlGLElBQUksQ0FBQyxjQUFjLENBQUMsWUFBWSxFQUFFLENBQUM7WUFDakMsTUFBTSxJQUFJLEtBQUssQ0FBQyx3QkFBd0IsQ0FBQyxDQUFDO1FBQzVDLENBQUM7UUFFRCxNQUFNLE1BQU0sR0FBRyxJQUFJLENBQUMsS0FBSyxDQUFDLGNBQWMsQ0FBQyxZQUFZLENBQUMsQ0FBQztRQUN2RCxPQUFPLENBQUMsR0FBRyxDQUFDLGtFQUFrRSxDQUFDLENBQUM7UUFFaEYsT0FBTztZQUNMLFFBQVEsRUFBRSxNQUFNLENBQUMsUUFBUTtZQUN6QixRQUFRLEVBQUUsTUFBTSxDQUFDLFFBQVE7U0FDMUIsQ0FBQztJQUNKLENBQUM7SUFBQyxPQUFPLEtBQUssRUFBRSxDQUFDO1FBQ2YsT0FBTyxDQUFDLEtBQUssQ0FBQywrQ0FBK0MsRUFBRSxLQUFLLENBQUMsQ0FBQztRQUN0RSxvQ0FBb0M7UUFDcEMsT0FBTztZQUNMLFFBQVEsRUFBRSxPQUFPLENBQUMsR0FBRyxDQUFDLE9BQU8sSUFBSSxVQUFVO1lBQzNDLFFBQVEsRUFBRSxPQUFPLENBQUMsR0FBRyxDQUFDLFdBQVcsSUFBSSxVQUFVO1NBQ2hELENBQUM7SUFDSixDQUFDO0FBQ0gsQ0FBQztBQUVELHdDQUF3QztBQUMzQixRQUFBLE1BQU0sR0FBRztJQUNwQix5QkFBeUI7SUFDekIsTUFBTSxFQUFFLE9BQU8sQ0FBQyxHQUFHLENBQUMsT0FBTyxJQUFJLFdBQVc7SUFDMUMsTUFBTSxFQUFFLFFBQVEsQ0FBQyxPQUFPLENBQUMsR0FBRyxDQUFDLE9BQU8sSUFBSSxNQUFNLEVBQUUsRUFBRSxDQUFDO0lBQ25ELE1BQU0sRUFBRSxPQUFPLENBQUMsR0FBRyxDQUFDLE9BQU8sSUFBSSxTQUFTO0lBQ3hDLE1BQU0sRUFBRSxhQUFhLENBQUMsUUFBUTtJQUM5QixVQUFVLEVBQUUsYUFBYSxDQUFDLFFBQVE7SUFDbEMsWUFBWSxFQUFFLE9BQU8sQ0FBQyxHQUFHLENBQUMsY0FBYyxLQUFLLE1BQU07SUFFbkQseUJBQXlCO0lBQ3pCLHNCQUFzQixFQUFFLE9BQU8sQ0FBQyxHQUFHLENBQUMseUJBQXlCO0lBRTdELFVBQVU7SUFDVixRQUFRLEVBQUUsT0FBTyxDQUFDLEdBQUcsQ0FBQyxTQUFTLElBQUksTUFBTTtDQUMxQyxDQUFDO0FBRUYsMkVBQTJFO0FBQ3BFLEtBQUssVUFBVSxnQkFBZ0I7SUFDcEMsSUFBSSxDQUFDO1FBQ0gsZ0VBQWdFO1FBQ2hFLElBQUksT0FBTyxDQUFDLEdBQUcsQ0FBQyx5QkFBeUIsRUFBRSxDQUFDO1lBQzFDLGFBQWEsR0FBRyxNQUFNLGlDQUFpQyxFQUFFLENBQUM7WUFDMUQsMkNBQTJDO1lBQzNDLGNBQU0sQ0FBQyxNQUFNLEdBQUcsYUFBYSxDQUFDLFFBQVEsQ0FBQztZQUN2QyxjQUFNLENBQUMsVUFBVSxHQUFHLGFBQWEsQ0FBQyxRQUFRLENBQUM7WUFDM0MsT0FBTyxDQUFDLEdBQUcsQ0FBQyxzRUFBc0UsQ0FBQyxDQUFDO1FBQ3RGLENBQUM7SUFDSCxDQUFDO0lBQUMsT0FBTyxLQUFLLEVBQUUsQ0FBQztRQUNmLE9BQU8sQ0FBQyxLQUFLLENBQUMsMkNBQTJDLEVBQUUsS0FBSyxDQUFDLENBQUM7SUFDcEUsQ0FBQztBQUNILENBQUMiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBTZWNyZXRzTWFuYWdlciB9IGZyb20gJ2F3cy1zZGsnO1xyXG5cclxuLy8gSW50ZXJmYWNlIGZvciBkYXRhYmFzZSBjcmVkZW50aWFscyByZXRyaWV2ZWQgZnJvbSBTZWNyZXRzIE1hbmFnZXJcclxuaW50ZXJmYWNlIERhdGFiYXNlQ3JlZGVudGlhbHMge1xyXG4gIHVzZXJuYW1lOiBzdHJpbmc7XHJcbiAgcGFzc3dvcmQ6IHN0cmluZztcclxufVxyXG5cclxubGV0IGRiQ3JlZGVudGlhbHMgPSB7XHJcbiAgdXNlcm5hbWU6IHByb2Nlc3MuZW52LkRCX1VTRVIgfHwgJ3Bvc3RncmVzJyxcclxuICBwYXNzd29yZDogcHJvY2Vzcy5lbnYuREJfUEFTU1dPUkQgfHwgJ3Bvc3RncmVzJ1xyXG59O1xyXG5cclxuLy8gRnVuY3Rpb24gdG8gZ2V0IGRhdGFiYXNlIGNyZWRlbnRpYWxzIGZyb20gU2VjcmV0cyBNYW5hZ2VyXHJcbmFzeW5jIGZ1bmN0aW9uIGdldERiQ3JlZGVudGlhbHNGcm9tU2VjcmV0TWFuYWdlcigpOiBQcm9taXNlPERhdGFiYXNlQ3JlZGVudGlhbHM+IHtcclxuICBjb25zdCBzZWNyZXRzTWFuYWdlciA9IG5ldyBTZWNyZXRzTWFuYWdlcigpO1xyXG4gIGNvbnN0IHNlY3JldEFybiA9IHByb2Nlc3MuZW52LkRCX0NSRURFTlRJQUxTX1NFQ1JFVF9BUk47XHJcblxyXG4gIGlmICghc2VjcmV0QXJuKSB7XHJcbiAgICBjb25zb2xlLmxvZygnTm8gc2VjcmV0IEFSTiBwcm92aWRlZCwgdXNpbmcgZW52aXJvbm1lbnQgdmFyaWFibGVzJyk7XHJcbiAgICByZXR1cm4ge1xyXG4gICAgICB1c2VybmFtZTogcHJvY2Vzcy5lbnYuREJfVVNFUiB8fCAncG9zdGdyZXMnLFxyXG4gICAgICBwYXNzd29yZDogcHJvY2Vzcy5lbnYuREJfUEFTU1dPUkQgfHwgJ3Bvc3RncmVzJ1xyXG4gICAgfTtcclxuICB9XHJcblxyXG4gIHRyeSB7XHJcbiAgICBjb25zb2xlLmxvZyhgUmV0cmlldmluZyBzZWNyZXQgZnJvbSBTZWNyZXRzIE1hbmFnZXI6ICR7c2VjcmV0QXJufWApO1xyXG4gICAgY29uc3Qgc2VjcmV0UmVzcG9uc2UgPSBhd2FpdCBzZWNyZXRzTWFuYWdlci5nZXRTZWNyZXRWYWx1ZSh7IFNlY3JldElkOiBzZWNyZXRBcm4gfSkucHJvbWlzZSgpO1xyXG5cclxuICAgIGlmICghc2VjcmV0UmVzcG9uc2UuU2VjcmV0U3RyaW5nKSB7XHJcbiAgICAgIHRocm93IG5ldyBFcnJvcignU2VjcmV0IHN0cmluZyBpcyBlbXB0eScpO1xyXG4gICAgfVxyXG5cclxuICAgIGNvbnN0IHNlY3JldCA9IEpTT04ucGFyc2Uoc2VjcmV0UmVzcG9uc2UuU2VjcmV0U3RyaW5nKTtcclxuICAgIGNvbnNvbGUubG9nKCdTdWNjZXNzZnVsbHkgcmV0cmlldmVkIGRhdGFiYXNlIGNyZWRlbnRpYWxzIGZyb20gU2VjcmV0cyBNYW5hZ2VyJyk7XHJcblxyXG4gICAgcmV0dXJuIHtcclxuICAgICAgdXNlcm5hbWU6IHNlY3JldC51c2VybmFtZSxcclxuICAgICAgcGFzc3dvcmQ6IHNlY3JldC5wYXNzd29yZFxyXG4gICAgfTtcclxuICB9IGNhdGNoIChlcnJvcikge1xyXG4gICAgY29uc29sZS5lcnJvcignRXJyb3IgcmV0cmlldmluZyBzZWNyZXQgZnJvbSBTZWNyZXRzIE1hbmFnZXI6JywgZXJyb3IpO1xyXG4gICAgLy8gRmFsbGJhY2sgdG8gZW52aXJvbm1lbnQgdmFyaWFibGVzXHJcbiAgICByZXR1cm4ge1xyXG4gICAgICB1c2VybmFtZTogcHJvY2Vzcy5lbnYuREJfVVNFUiB8fCAncG9zdGdyZXMnLFxyXG4gICAgICBwYXNzd29yZDogcHJvY2Vzcy5lbnYuREJfUEFTU1dPUkQgfHwgJ3Bvc3RncmVzJ1xyXG4gICAgfTtcclxuICB9XHJcbn1cclxuXHJcbi8vIEluaXRpYWxpemUgY29uZmlnIHdpdGggZGVmYXVsdCB2YWx1ZXNcclxuZXhwb3J0IGNvbnN0IGNvbmZpZyA9IHtcclxuICAvLyBEYXRhYmFzZSBjb25maWd1cmF0aW9uXHJcbiAgZGJIb3N0OiBwcm9jZXNzLmVudi5EQl9IT1NUIHx8ICdsb2NhbGhvc3QnLFxyXG4gIGRiUG9ydDogcGFyc2VJbnQocHJvY2Vzcy5lbnYuREJfUE9SVCB8fCAnNTQzMicsIDEwKSxcclxuICBkYk5hbWU6IHByb2Nlc3MuZW52LkRCX05BTUUgfHwgJ3NvbHRyYWsnLFxyXG4gIGRiVXNlcjogZGJDcmVkZW50aWFscy51c2VybmFtZSxcclxuICBkYlBhc3N3b3JkOiBkYkNyZWRlbnRpYWxzLnBhc3N3b3JkLFxyXG4gIGRiU3NsRW5hYmxlZDogcHJvY2Vzcy5lbnYuREJfU1NMX0VOQUJMRUQgPT09ICd0cnVlJyxcclxuXHJcbiAgLy8gQ3JlZGVudGlhbHMgbWFuYWdlbWVudFxyXG4gIGRiQ3JlZGVudGlhbHNTZWNyZXRBcm46IHByb2Nlc3MuZW52LkRCX0NSRURFTlRJQUxTX1NFQ1JFVF9BUk4sXHJcblxyXG4gIC8vIExvZ2dpbmdcclxuICBsb2dMZXZlbDogcHJvY2Vzcy5lbnYuTE9HX0xFVkVMIHx8ICdpbmZvJ1xyXG59O1xyXG5cclxuLy8gRnVuY3Rpb24gdG8gaW5pdGlhbGl6ZSBjcmVkZW50aWFscyAtIGNhbGwgdGhpcyBiZWZvcmUgdXNpbmcgdGhlIGRhdGFiYXNlXHJcbmV4cG9ydCBhc3luYyBmdW5jdGlvbiBpbml0aWFsaXplQ29uZmlnKCk6IFByb21pc2U8dm9pZD4ge1xyXG4gIHRyeSB7XHJcbiAgICAvLyBPbmx5IGZldGNoIGZyb20gU2VjcmV0cyBNYW5hZ2VyIGlmIHJ1bm5pbmcgaW4gQVdTIChub3QgbG9jYWwpXHJcbiAgICBpZiAocHJvY2Vzcy5lbnYuREJfQ1JFREVOVElBTFNfU0VDUkVUX0FSTikge1xyXG4gICAgICBkYkNyZWRlbnRpYWxzID0gYXdhaXQgZ2V0RGJDcmVkZW50aWFsc0Zyb21TZWNyZXRNYW5hZ2VyKCk7XHJcbiAgICAgIC8vIFVwZGF0ZSBjb25maWcgd2l0aCByZXRyaWV2ZWQgY3JlZGVudGlhbHNcclxuICAgICAgY29uZmlnLmRiVXNlciA9IGRiQ3JlZGVudGlhbHMudXNlcm5hbWU7XHJcbiAgICAgIGNvbmZpZy5kYlBhc3N3b3JkID0gZGJDcmVkZW50aWFscy5wYXNzd29yZDtcclxuICAgICAgY29uc29sZS5sb2coJ0RhdGFiYXNlIGNvbmZpZ3VyYXRpb24gdXBkYXRlZCB3aXRoIGNyZWRlbnRpYWxzIGZyb20gU2VjcmV0cyBNYW5hZ2VyJyk7XHJcbiAgICB9XHJcbiAgfSBjYXRjaCAoZXJyb3IpIHtcclxuICAgIGNvbnNvbGUuZXJyb3IoJ0ZhaWxlZCB0byBpbml0aWFsaXplIGNvbmZpZyB3aXRoIHNlY3JldHM6JywgZXJyb3IpO1xyXG4gIH1cclxufSJdfQ==

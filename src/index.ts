@@ -2,12 +2,16 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult, Context, ScheduledEvent } 
 import { SolcastService } from './services/solcast-service';
 import { DatabaseService } from './services/db-service';
 import { logger } from './utils/logger';
+import { initializeConfig } from './config';
 
 /**
  * Lambda handler for scheduled events (cron jobs)
  */
 export const scheduledHandler = async (event: ScheduledEvent, context: Context): Promise<void> => {
     logger.info('Starting scheduled data collection', { event });
+
+    // Initialize configuration (loads credentials from Secrets Manager if needed)
+    await initializeConfig();
 
     const solcastService = new SolcastService();
     const dbService = new DatabaseService();
@@ -38,6 +42,9 @@ export const scheduledHandler = async (event: ScheduledEvent, context: Context):
  */
 export const apiHandler = async (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> => {
     logger.info('Received API request', { path: event.path, method: event.httpMethod });
+
+    // Initialize configuration (loads credentials from Secrets Manager if needed)
+    await initializeConfig();
 
     const solcastService = new SolcastService();
     const dbService = new DatabaseService();

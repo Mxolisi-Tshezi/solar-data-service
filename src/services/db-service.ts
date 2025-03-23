@@ -1,12 +1,33 @@
+// src/services/db-service.ts
 import { Pool, PoolClient } from 'pg';
 import { CombinedDataPoint } from '../models/combined-data';
 import { logger } from '../utils/logger';
-import { config } from '../config';
+import { config, initializeConfig } from '../config';
 
 export class DatabaseService {
-  private pool: Pool;
+  private pool: Pool | null = null;
   
   constructor() {
+    // We'll initialize the pool after getting credentials
+  }
+
+  /**
+   * Initialize the database connection pool with credentials
+   */
+  private async initializePool(): Promise<void> {
+    if (this.pool) return; // Already initialized
+    
+    // Initialize config to get credentials from Secrets Manager if needed
+    await initializeConfig();
+    
+    logger.info('Initializing database connection pool', {
+      host: config.dbHost,
+      port: config.dbPort,
+      database: config.dbName,
+      user: config.dbUser,
+      ssl: config.dbSslEnabled
+    });
+    
     this.pool = new Pool({
       host: config.dbHost,
       port: config.dbPort,
@@ -23,12 +44,25 @@ export class DatabaseService {
     this.pool.on('error', (err) => {
       logger.error('Unexpected error on idle client', err);
     });
+    
+    // Test the connection
+    try {
+      const client = await this.pool.connect();
+      logger.info('Successfully connected to database');
+      client.release();
+    } catch (error) {
+      logger.error('Failed to connect to database', error);
+      throw error;
+    }
   }
   
   /**
    * Initializes the database schema if it doesn't exist
    */
   public async initializeDatabase(): Promise<void> {
+    await this.initializePool();
+    if (!this.pool) throw new Error('Database pool not initialized');
+    
     const client = await this.pool.connect();
     
     try {
@@ -73,6 +107,9 @@ export class DatabaseService {
       logger.warn('No data points to store');
       return;
     }
+    
+    await this.initializePool();
+    if (!this.pool) throw new Error('Database pool not initialized');
     
     const client = await this.pool.connect();
     
@@ -138,6 +175,9 @@ export class DatabaseService {
    * Retrieve recent data points from the database
    */
   public async getRecentData(limit: number = 48): Promise<CombinedDataPoint[]> {
+    await this.initializePool();
+    if (!this.pool) throw new Error('Database pool not initialized');
+    
     const query = `
       SELECT * FROM solar_data
       ORDER BY period_end DESC
@@ -152,6 +192,9 @@ export class DatabaseService {
    * Cleanup connection pool on shutdown
    */
   public async close(): Promise<void> {
-    await this.pool.end();
+    if (this.pool) {
+      await this.pool.end();
+      this.pool = null;
+    }
   }
 }
