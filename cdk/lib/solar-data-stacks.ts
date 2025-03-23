@@ -1,4 +1,3 @@
-// cdk/lib/solar-data-stack.ts
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as rds from 'aws-cdk-lib/aws-rds';
@@ -76,10 +75,41 @@ export class SolarDataStack extends cdk.Stack {
     });
 
     // Create the Lambda function
+    // const lambdaFunction = new lambda.Function(this, 'SolarDataLambda', {
+    //   runtime: lambda.Runtime.NODEJS_18_X,
+    //   handler: 'index.handler',
+    //   code: lambda.Code.fromAsset('../lambda-package'), // Compiled TypeScript
+    //   vpc,
+    //   vpcSubnets: {
+    //     subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
+    //   },
+    //   securityGroups: [lambdaSecurityGroup],
+    //   timeout: Duration.seconds(30),
+    //   memorySize: 256,
+    //   environment: {
+    //     DB_HOST: database.dbInstanceEndpointAddress,
+    //     DB_PORT: database.dbInstanceEndpointPort,
+    //     DB_NAME: 'soltrak',
+    //     // Instead of using SecretValue directly, we'll use the secret ARN
+    //     DB_CREDENTIALS_SECRET_ARN: databaseCredentials.secretArn,
+    //     DB_SSL_ENABLED: 'true',
+    //     LOG_LEVEL: 'info'
+    //   },
+    //   logRetention: logs.RetentionDays.ONE_WEEK,
+    //   description: 'Lambda function to collect and process solar data from Solcast API'
+    // });
+
+    // // Grant Lambda function access to database credentials
+    // databaseCredentials.grantRead(lambdaFunction);
+
+
+    // Section of solar-data-stack.ts that needs updating
+
+    // Create the Lambda function
     const lambdaFunction = new lambda.Function(this, 'SolarDataLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../dist'), // Compiled TypeScript
+      code: lambda.Code.fromAsset('../lambda-package'), // Using our packaged code
       vpc,
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
@@ -91,8 +121,8 @@ export class SolarDataStack extends cdk.Stack {
         DB_HOST: database.dbInstanceEndpointAddress,
         DB_PORT: database.dbInstanceEndpointPort,
         DB_NAME: 'soltrak',
-        DB_USER: databaseCredentials.secretValueFromJson('username').toString(),
-        DB_PASSWORD: databaseCredentials.secretValueFromJson('password').toString(),
+        // Only pass the secret ARN, not the secret values directly
+        DB_CREDENTIALS_SECRET_ARN: databaseCredentials.secretArn,
         DB_SSL_ENABLED: 'true',
         LOG_LEVEL: 'info'
       },
@@ -103,12 +133,13 @@ export class SolarDataStack extends cdk.Stack {
     // Grant Lambda function access to database credentials
     databaseCredentials.grantRead(lambdaFunction);
 
+
     // Set up CloudWatch Events rule to trigger Lambda every hour
     const rule = new events.Rule(this, 'HourlySchedule', {
       schedule: events.Schedule.expression('cron(0 * * * ? *)'), // Run every hour at minute 0
       description: 'Trigger solar data collection every hour'
     });
-    
+
     rule.addTarget(new targets.LambdaFunction(lambdaFunction));
 
     // Create Lambda Function URL for public access
@@ -136,4 +167,3 @@ export class SolarDataStack extends cdk.Stack {
     });
   }
 }
-
