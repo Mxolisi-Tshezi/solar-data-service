@@ -29,7 +29,7 @@ solar-data-service/
 ├── docker-compose.yml            # Local development environment
 ├── package.json
 ├── tsconfig.json
-└── README.md                     # This file
+└── README.md                     # readme file
 ```
 
 ## Features
@@ -41,16 +41,6 @@ solar-data-service/
 - Error handling with retries
 - Local development environment with Docker Compose
 - AWS CDK for infrastructure as code
-
-```
-
-## API Endpoints
-
-The Lambda function exposes the following HTTP endpoints:
-
-- **POST /collect**: Manually triggers data collection
-- **GET /data**: Retrieves recent data from the database
-  - Optional query parameter: `limit` (default: 48)
 
 ## Local Development Setup
 
@@ -64,22 +54,26 @@ The Lambda function exposes the following HTTP endpoints:
 ### Setting Up the Local Environment
 
 1. Clone the repository:
+
    ```
    git clone https://github.com/[username]/solar-data-service.git
    cd solar-data-service
    ```
 
 2. Install dependencies:
+
    ```
    npm install
    ```
 
 3. Start the local PostgreSQL database:
+
    ```
-   npm run setup:local
+   docker-compose up -d
    ```
 
 4. Create a `.env` file in the project root with the following content:
+
    ```
    DB_HOST=localhost
    DB_PORT=5432
@@ -91,11 +85,13 @@ The Lambda function exposes the following HTTP endpoints:
    ```
 
 5. Run the migration script to set up the database schema:
+
    ```
-   npm run migrate
+   npx ts-node scripts/migrate.ts
    ```
 
 6. Build the TypeScript code:
+
    ```
    npm run build
    ```
@@ -103,6 +99,10 @@ The Lambda function exposes the following HTTP endpoints:
 7. Run the local script to test data collection:
    ```
    npm run start:local
+   ```
+   or
+   ```
+   npx ts-node src/local.ts
    ```
 
 ### Using PgAdmin
@@ -132,75 +132,102 @@ The local environment includes PgAdmin for database management:
 ### Deploying with AWS CDK
 
 1. Navigate to the CDK directory:
+
    ```
    cd cdk
    ```
 
 2. Install CDK dependencies:
+
    ```
    npm install
    ```
 
 3. Bootstrap your AWS environment (if not done already):
+
    ```
    npm run cdk:bootstrap
    ```
 
 4. Synthesize the CloudFormation template:
+
    ```
    npm run cdk:synth
    ```
 
-5. Deploy the stack:
+5. Create a package for your Lambda function:
+
    ```
+   # From the project root
+   mkdir -p lambda-package
+   cp -r dist/* lambda-package/
+   cp package.json lambda-package/
+   cd lambda-package
+   npm install --production
+   cd ..
+   ```
+
+6. Deploy the stack:
+
+   ```
+   cd cdk
    npm run cdk:deploy
    ```
 
-6. After deployment, the Lambda function URL will be displayed in the output.
+7. After deployment, the Lambda function URL will be displayed in the output.
 
-## Testing the Deployed Function
+## Deployed URL
 
-### Manual Testing
+The Lambda function is accessible at:
 
-1. Trigger data collection manually:
-   ```
-   curl -X POST https://[lambda-function-url]/collect
-   ```
+```
+https://5ypbfntjrwk2z4h3crczmdrz7e0pdwma.lambda-url.eu-north-1.on.aws/
+```
 
-2. Retrieve recent data:
-   ```
-   curl https://[lambda-function-url]/data
-   ```
+## API Endpoints
 
-3. Limit the number of results:
-   ```
-   curl https://[lambda-function-url]/data?limit=10
-   ```
+The Lambda function exposes the following HTTP endpoints:
 
-### Automated Testing
+- **POST /collect**: Manually triggers data collection
 
-The Lambda function is scheduled to run every hour. You can view the logs in the AWS CloudWatch console to verify its execution.
+  ```
+  curl -X POST https://5ypbfntjrwk2z4h3crczmdrz7e0pdwma.lambda-url.eu-north-1.on.aws/collect
+  ```
+
+- **GET /data**: Retrieves recent data from the database
+  ```
+  curl https://5ypbfntjrwk2z4h3crczmdrz7e0pdwma.lambda-url.eu-north-1.on.aws/data
+  ```
+  - Optional query parameter: `limit` (default: 48)
+  ```
+  curl https://5ypbfntjrwk2z4h3crczmdrz7e0pdwma.lambda-url.eu-north-1.on.aws/data?limit=10
+  ```
 
 ## Error Handling Considerations
 
 The system implements the following strategies to handle exceptions and ensure data reliability:
 
 1. **API Resilience**:
+
    - Retry mechanism for API calls (3 attempts with exponential backoff)
    - Timeout settings to prevent hanging requests
    - Circuit breaker pattern to avoid cascading failures
 
 2. **Data Integrity**:
+
    - Transactional database operations
    - Upsert logic to handle duplicate data
    - Schema validation for API responses
 
 3. **Fallback Strategies for Missing Irradiance Data**:
+
    - Interpolation from historical data for short-term gaps
    - Alerts for persistent data issues
    - Use of alternative data sources when possible
+   - Fallback to mock data generation when API is unavailable
 
 4. **Monitoring and Alerting**:
+
    - CloudWatch Alarms for Lambda errors
    - Logging of all API interactions and data processing steps
    - Notification system for critical failures
