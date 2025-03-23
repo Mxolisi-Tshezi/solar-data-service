@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { SolarDataStack } from '../lib/solar-data-stack';
+import { SolarDataStack } from '../lib/solar-data-stacks';
 
 const app = new cdk.App();
 new SolarDataStack(app, 'SolarDataStack', {

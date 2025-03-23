@@ -1,4 +1,3 @@
-// src/local.ts
 import dotenv from 'dotenv';
 import { SolcastService } from './services/solcast-service';
 import { DatabaseService } from './services/db-service';
